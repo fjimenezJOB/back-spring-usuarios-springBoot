@@ -1,12 +1,16 @@
 package com.voltex.springboot.backend.apirest.springbootbackendapirest.controllers;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.voltex.springboot.backend.apirest.springbootbackendapirest.models.entity.Cliente;
 import com.voltex.springboot.backend.apirest.springbootbackendapirest.models.service.IClienteService;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,14 +36,41 @@ public class ClienteRestController {
     }
 
     @GetMapping("/clientes/{id}")
-    public Cliente show(@PathVariable Long id) {
-        return clienteService.findById(id);
+    public ResponseEntity<?> show(@PathVariable Long id) {
+        Cliente cliente = null;
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            cliente = clienteService.findById(id);
+        } catch (DataAccessException e) {
+            response.put("mensje", "Error en realizar la consulta en la base de datos :(");
+            response.put("error", e.getMessage().concat(": ").concat(e.getMostSpecificCause().getMessage()));
+            return new ResponseEntity<Map<String, Object>>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        if (cliente == null) {
+            response.put("mensje",
+                    "El Cliente con el ID: ".concat(id.toString().concat(" NO existe en la base de datos.")));
+            return new ResponseEntity<Map<String, Object>>(response, HttpStatus.NOT_FOUND);
+        }
+
+        return new ResponseEntity<Cliente>(cliente, HttpStatus.OK);
     }
 
     @PostMapping("/clientes")
-    @ResponseStatus(HttpStatus.CREATED)
-    public Cliente create(@RequestBody Cliente cliente) {
-        return clienteService.save(cliente);
+    public ResponseEntity<?> create(@RequestBody Cliente cliente) {
+        Cliente clienteNew = null;
+        Map<String, Object> response = new HashMap<>();
+        try {
+            clienteNew = clienteService.save(cliente);
+        } catch (DataAccessException e) {
+            response.put("mensje", "Error al realizar el Insert en la base de datos.");
+            response.put("error", e.getMessage().concat(": ").concat(e.getMostSpecificCause().getMessage()));
+            return new ResponseEntity<Map<String, Object>>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        response.put("mensaje", "El Cliente ha sido creado con éxito!");
+        response.put("cliente", clienteNew);
+        return new ResponseEntity<Map<String, Object>>(response, HttpStatus.CREATED);
     }
 
     @PutMapping("/clientes/{id}")
